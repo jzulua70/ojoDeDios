@@ -28,7 +28,7 @@ def getFaces(img):
 				imageFile='assets/tmp.jpg'
 				bucket='bucket'
 
-				with open(imageFile, 'rb') as image:
+				with open(img, 'rb') as image:
 						 response = client.detect_faces(Image={'Bytes': image.read()},Attributes=['ALL'])
 
 				for faceDetail in response['FaceDetails']:
