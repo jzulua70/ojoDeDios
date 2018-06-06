@@ -3,44 +3,59 @@
 import numpy as np
 import cv2 as cv
 import boto3
-
+from botocore.exceptions import ClientError
 client=boto3.client('rekognition','us-east-1')
-
 face_cascade = cv.CascadeClassifier('classifiers/haarcascade_frontalface_alt2.xml')
+cap = cv.VideoCapture("../../video/DiegoWalk.mp4")
 #cap = cv.VideoCapture("../../video/VID_20180605_151627.mp4")
-cap = cv.VideoCapture("../../video/Diego.jpg")
+#cap = cv.VideoCapture("../../video/Diego.jpg")
 #cap = cv.VideoCapture("assets/5.jpeg")
+
+#cv.imshow("target", target)
+
+def getCompare(img,target):
+	source_face = []
+	matches = []
+	try:
+			rekognition = boto3.client("rekognition", "us-east-1")
+			cv.imwrite("assets/temp.jpg",img)
+			source = "assets/temp.jpg"
+			img1 = open(source, 'rb')
+			img2 = open(target, 'rb')
+			response = rekognition.compare_faces( SourceImage={'Bytes': img1.read()},TargetImage={'Bytes': img2.read()},SimilarityThreshold=80)
+
+			source_face = response['SourceImageFace']
+			matches = response['FaceMatches']
+			
+	except ClientError as e:
+		print("no hay caras")
+
+	return source_face,matches
+
+
+cont = 0
 while(True):
-	# Capture frame-by-frame
 	ret, img = cap.read()
-	gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-	faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
-	
-	for (x,y,w,h) in faces:
-		cv.imwrite("assets/tmp.jpg", img[y:y+w,x:x+h])
-		imageFile='assets/tmp.jpg'
-		with open(imageFile, 'rb') as image:
-			response = client.detect_faces(Image={'Bytes': image.read()},Attributes=['ALL'])
-
-		for faceDetail in response['FaceDetails']:
-			print("the person is: " + str(faceDetail['Emotions'][0]['Type']) + " with " + str(faceDetail['Emotions'][0]['Confidence']) + "%")
-		
-
-
-		cv.rectangle(img,(x-25,y-25),(x+w+25,y+h+25),(255,0,0),2)
-		crop_img = img[y-25:y+h+25, x-25:x+w+25]
-		cv.imshow('crop',crop_img)
-		crop_img = cv.resize(crop_img, (80,80)) 
-
-		cv.imwrite('../../video/crop.png',crop_img)
-
-		roi_gray = gray[y:y+h, x:x+w]
-		roi_color = img[y:y+h, x:x+w]
 	img = cv.resize(img, (1080,500)) 
-	cv.imshow('img',img)
 
-	cv.waitKey(0)
+	if (cont % 10 == 0):
+		source_face,matches = getCompare(img,"../../video/Diego2.jpg")
+		print(source_face)
+		print(matches)
+		if len(source_face) >0:
+			print "Source Face ({Confidence}%)".format(**source_face)
+
+	# one match for each target face
+		for match in matches:
+			print "Target Face ({Confidence}%)".format(**match['Face'])
+			print "  Similarity : {}%".format(match['Similarity'])
+		
+	cv.imshow('img',img)
+	cont = cont+1
+
+	if   cv.waitKey(1) & 0xFF == ord("q") :
+		break
 
 
 cv.destroyAllWindows()
+
