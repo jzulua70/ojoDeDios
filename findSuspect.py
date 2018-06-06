@@ -1,29 +1,41 @@
 
 
 import numpy as np
-import cv2 as cv
+import cv2
 import boto3
+import pickle
 from botocore.exceptions import ClientError
 client=boto3.client('rekognition','us-east-1')
-face_cascade = cv.CascadeClassifier('classifiers/haarcascade_frontalface_alt2.xml')
-#cap = cv.VideoCapture("../../video/DiegoWalk.mp4")
-#cap = cv.VideoCapture(0)
-#cap = cv.VideoCapture("../../video/VID_20180605_151627.mp4")
-#cap = cv.VideoCapture("../../video/Diego.jpg")
-#cap = cv.VideoCapture("assets/5.jpeg")
+face_cascade = cv2.CascadeClassifier('classifiers/haarcascade_frontalface_alt2.xml')
+face_cascade_profile = cv2.CascadeClassifier('classifiers/haarcascade_profile.xml')
 
-#cv.imshow("target", target)
+recognizer = cv2.face.LBPHFaceRecognizer_create()
+recognizer.read("recognizers/face-trainner.yml")
 
-def getCompare(img,target):
+labels = {}
+with open("pickles/face-labels.pickle", 'rb') as f:
+	og_labels = pickle.load(f)
+	labels = {v:k for k,v in og_labels.items()}
+
+
+cap = cv2.VideoCapture("../../video/DiegoWalk2.mp4")
+#cap = cv2.VideoCapture(0)
+#cap = cv2.VideoCapture("../../video/VID_20180605_151627.mp4")
+#cap = cv2.VideoCapture("../../video/Diego.jpg")
+#cap = cv2.VideoCapture("assets/5.jpeg")
+
+#cv2.imshow("target", target)
+
+def getCompare(frame,target):
 	source_face = []
 	matches = []
 	try:
 			rekognition = boto3.client("rekognition", "us-east-1")
-			cv.imwrite("assets/temp.jpg",img)
+			cv2.imwrite("assets/temp.jpg",frame)
 			source = "assets/temp.jpg"
-			img1 = open(source, 'rb')
-			img2 = open(target, 'rb')
-			response = rekognition.compare_faces( SourceImage={'Bytes': img1.read()},TargetImage={'Bytes': img2.read()},SimilarityThreshold=80)
+			frame1 = open(source, 'rb')
+			frame2 = open(target, 'rb')
+			response = rekognition.compare_faces( SourceImage={'Bytes': frame1.read()},TargetImage={'Bytes': frame2.read()},SimilarityThreshold=80)
 
 			source_face = response['SourceImageFace']
 			matches = response['FaceMatches']
@@ -33,44 +45,108 @@ def getCompare(img,target):
 
 	return source_face,matches
 
-
 cont = 0
-while(True):
-	ret, img = cap.read()
-	#img = cv.resize(img, (1080,500)) 
+ret, frame = cap.read()
 
-	if (cont % 10 == 0):
-		source_face,matches = getCompare(img,"../../video/Diego2.jpg")
+while(ret):
+	
+	if(cont % 10 == 0):
+		#frame = frame[:1800, 700:3000, :]
+		#frame = cv2.flip(frame, -1)
+		# frame = frame[400:1800, 1000:]
+
+		# Capture frame-by-frame
+		gray  = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+		band = False
+		reconocido = False
+
+		faces = face_cascade_profile.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5)
+		for (x, y, w, h) in faces:
+			roi_gray = gray[y:y+h, x:x+w] #(ycord_start, ycord_end)
+			roi_color = frame[y:y+h, x:x+w]
+			band = True
+
+			# recognize? deep learned model predict keras tensorflow pytorch scikit learn
+			id_, conf = recognizer.predict(roi_gray)
+			if conf>=40 and conf <= 140:
+				print(conf, labels[id_], h, w)
+				font = cv2.FONT_HERSHEY_SIMPLEX
+				name = labels[id_]
+				color = (255, 255, 255)
+				stroke = 2
+				cv2.putText(frame, name, (x,y), font, 1, color, stroke, cv2.LINE_AA)
+				reconocido = True
+
+			color = (255, 0, 0) #BGR 0-255
+			stroke = 2
+			end_cord_x = x + w
+			end_cord_y = y + h
+			cv2.rectangle(frame, (x, y), (end_cord_x, end_cord_y), color, stroke)
+
+		if not band:
+			faces = face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5)
+			for (x, y, w, h) in faces:
+				#print(x,y,w,h)
+				roi_gray = gray[y:y+h, x:x+w] #(ycord_start, ycord_end)
+				roi_color = frame[y:y+h, x:x+w]
+
+				# recognize? deep learned model predict keras tensorflow pytorch scikit learn
+				id_, conf = recognizer.predict(roi_gray)
+				#print(conf, labels[id_], h, w)
+				if conf>=40 and conf <= 140:
+					print(conf, labels[id_], h, w)
+
+					font = cv2.FONT_HERSHEY_SIMPLEX
+					name = labels[id_]
+					color = (255, 255, 255)
+					stroke = 2
+					cv2.putText(frame, name, (x,y), font, 1, color, stroke, cv2.LINE_AA)
+					reconocido = True
+
+				color = (255, 0, 0) #BGR 0-255
+				stroke = 2
+				end_cord_x = x + w
+				end_cord_y = y + h
+				cv2.rectangle(frame, (x, y), (end_cord_x, end_cord_y), color, stroke)
+
+
+
+		# Display the resulting frame
+		
+	#frame = cv2.resize(frame, (1080,500)) 
+
+	if reconocido:
+		source_face,matches = getCompare(frame,"../../video/Diego2.jpg")
 		print(source_face)
 		print(matches)
 		if len(source_face) >0:
-			height, width, channels = img.shape
-			print "Source Face ({Confidence}%)".format(**source_face)
+			height, width, channels = frame.shape
+			print ("Source Face ({Confidence}%)".format(**source_face))
 			ptop= int (source_face["BoundingBox"]["Top"] * height)
 			pleft= int(source_face["BoundingBox"]["Left"] * width)
 			pwidth = int(source_face["BoundingBox"]["Width"]*width)
 			pheight = int(source_face["BoundingBox"]["Height"]*height)
-			cv.circle(img,(pleft,ptop), 2, (0,0,255), -1)
-			cv.circle(img,(pleft+pwidth,ptop+pheight), 2, (0,255,0), -1)
-			crop_image = img[ptop:ptop+pwidth,pleft:pleft+pheight]
-			cv.imshow("crop_image",crop_image)
+			cv2.circle(frame,(pleft,ptop), 2, (0,0,255), -1)
+			cv2.circle(frame,(pleft+pwidth,ptop+pheight), 2, (0,255,0), -1)
+			crop_image = frame[ptop:ptop+pwidth,pleft:pleft+pheight]
+			cv2.imshow("crop_image",crop_image)
 			print("bounding", "left", pleft, "top", ptop, "width",pwidth, "height",pheight)
 
-		
-
-		
-
 	# one match for each target face
+		if len(matches)>1:
+			print("Mechas")
+
 		for match in matches:
-			print "Target Face ({Confidence}%)".format(**match['Face'])
-			print "  Similarity : {}%".format(match['Similarity'])
-		
-	cv.imshow('img',img)
+			print ("Target Face ({Confidence}%)".format(**match['Face']))
+			print ("  Similarity : {}%".format(match['Similarity']))
+	
+
+	cv2.imshow('frame',frame)
 	cont = cont+1
 
-	if   cv.waitKey(1) & 0xFF == ord("q") :
+	if   cv2.waitKey(1) & 0xFF == ord("q") :
 		break
+	ret, frame = cap.read()
 
-
-cv.destroyAllWindows()
+cv2.destroyAllWindows()
 
