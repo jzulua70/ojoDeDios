@@ -48,7 +48,7 @@ def wanted(suspect_path,crop_image,info_path):
     cv2.putText(crop_image,'Found',(10,len(crop_image)), font, 3,(255,255,255),2,cv2.LINE_AA)
     faces = np.concatenate((wanted_image, crop_image), axis=0)
 
-    text = np.zeros((len(faces), (len(faces)//2), 3), np.uint8)*255
+    text = np.zeros((len(faces), (len(faces)//2), 3), np.uint8)
     text[:] = (255,255,255)
 
     with open(info_path) as f:
