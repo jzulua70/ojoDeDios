@@ -1,0 +1,8 @@
+Name:
+Armando Casas
+
+Age: 23
+
+Crimes:
+-Murder
+-Robbing
