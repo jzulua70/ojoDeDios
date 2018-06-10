@@ -5,6 +5,14 @@ import cv2
 import boto3
 import pickle
 from botocore.exceptions import ClientError
+import argparse
+import sys
+ 
+parser = argparse.ArgumentParser()
+parser.add_argument("-t", "--targetImg", help="Imagen de la persona a buscar" )
+parser.add_argument("-v", "--videoSource", help="path del video para buscar")
+args = parser.parse_args()
+
 client=boto3.client('rekognition','us-east-1')
 face_cascade = cv2.CascadeClassifier('classifiers/haarcascade_frontalface_alt2.xml')
 face_cascade_profile = cv2.CascadeClassifier('classifiers/haarcascade_profile.xml')
@@ -12,7 +20,8 @@ face_cascade_profile = cv2.CascadeClassifier('classifiers/haarcascade_profile.xm
 recognizer = cv2.face.LBPHFaceRecognizer_create()
 recognizer.read("recognizers/face-trainner.yml")
 
-
+if not(args.targetImg) or not(args.videoSource):
+	sys.exit("Ingrese los parámetros de entrada (python3.5 findSuspect.py -h para más información)")
 
 
 labels = {}
@@ -21,8 +30,11 @@ with open("pickles/face-labels.pickle", 'rb') as f:
 	labels = {v:k for k,v in og_labels.items()}
 
 
-#cap = cv2.VideoCapture("../../video/DiegoWalk2.mp4")
-cap = cv2.VideoCapture(0)
+if args.videoSource is "0":
+	args.videoSource = int(args.videoSource)
+
+cap = cv2.VideoCapture(args.videoSource)
+#cap = cv2.VideoCapture(0)
 #cap = cv2.VideoCapture("../../video/VID_20180605_151627.mp4")
 #cap = cv2.VideoCapture("../../video/Diego.jpg")
 #cap = cv2.VideoCapture("assets/5.jpeg")
@@ -155,7 +167,7 @@ while(ret):
 	#frame = cv2.resize(frame, (1080,500)) 
 
 	if reconocido:
-		source_face,matches = getCompare(frame,"../../video/Diego2.jpg")
+		source_face,matches = getCompare(frame,args.targetImg)
 		print(source_face)
 		print(matches)
 		crop_image=None
