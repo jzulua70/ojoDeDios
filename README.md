@@ -18,14 +18,16 @@ Este es un proyecto realizado para el curso tópicos especiales en telemática q
 
 Este proyecto fue realizado utilizando python3.5, opencv3.4 y rekognition de aws.
 
-Las bibliotecas utilizadas para python fueron: Numpy,cv2 y boto3. Todas estas se pueden instalar directamente con el instalador de paquetes de python(pip). 
+Las bibliotecas utilizadas para python fueron: Numpy, cv2, pickle, pillow y boto3. Todas estas se pueden instalar directamente con el instalador de paquetes de python(pip). 
 
 Además se requiere de un cliente de amazon para correr el proyecto. Para esto es necesario utilizar el comando "aws configure" y dar todas las credenciales de la cuenta.
 
 ```
 sudo pip3.5 install opencv-python
+sudo pip3.5 install opencv-contrib-python
 sudo pip3.5 install numpy
 sudo pip3.5 install boto3
+sudo pip3.5 install Pillow
 aws configure
 ```
 
